@@ -1,9 +1,13 @@
 from tkinter import *
 
-"""The GUI for the game, along with any interactions with it."""
+""" The GUI for the game, along with any interactions with it."""
 class NoughtsAndCrossesScreen:
     def __init__(self):
-        """Creates the screen and the initial grid & player states."""
+        """ Creates the screen and the initial grid & player states.
+
+        There are two game modes available: PvP or PvCPU. To switch between the two, change the
+        "self.CPU_opponent_enabled" flag.
+        """
         self.width = 600
         self.height = 600
         self.cell_width = self.width // 3
@@ -11,7 +15,13 @@ class NoughtsAndCrossesScreen:
         self.grid_state = [[None, None, None],
                            [None, None, None],
                            [None, None, None],]
-        self.current_player = "Player 1"
+        
+        self.CPU_opponent_enabled = False
+        if self.CPU_opponent_enabled:
+            #self.CPU_opponent = NoughtsAndCrossesMinimaxAI()
+            self.current_player = "Player"
+        else:
+            self.current_player = "Player 1"
         
         self.root = Tk()
         self.root.geometry = str(self.width) + "x" + str(self.height)
@@ -52,7 +62,7 @@ class NoughtsAndCrossesScreen:
                 Which player won, if any.
         """
         
-        if self.current_player == "Player 1":
+        if self.current_player == "Player 1" or self.current_player == "Player":
             symbol = "nought"
         else:
             symbol = "cross"
@@ -212,12 +222,27 @@ class NoughtsAndCrossesScreen:
                 else:
                     self.display_win_message(winner)
             else:
-                if self.current_player == "Player 1":
+                if self.CPU_opponent_enabled == True:
+                    if self.current_player == "Player":
+                        self.current_player = "CPU"
+                    else:
+                        self.current_player = "Player"
+                elif self.current_player == "Player 1":
                     self.current_player = "Player 2"
                 else:
                     self.current_player = "Player 1"
         
-#NoughtsAndCrossesScreen()
+""" A Minimax AI for the game Noughts and Crosses"""
+class NoughtsAndCrossesMinimaxAI:
+    def __init__(self):
+        """ Initialises the game"""
+        pass
+
+def main():
+    NoughtsAndCrossesScreen()
+
+if __name__ == "__main__":
+    main()
         
         
 
