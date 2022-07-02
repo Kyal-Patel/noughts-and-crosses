@@ -1,4 +1,5 @@
 from tkinter import *
+import copy
 
 """ The GUI for the game, along with any interactions with it."""
 class NoughtsAndCrossesScreen:
@@ -18,7 +19,7 @@ class NoughtsAndCrossesScreen:
         
         self.CPU_opponent_enabled = False
         if self.CPU_opponent_enabled:
-            #self.CPU_opponent = NoughtsAndCrossesMinimaxAI()
+            self.CPU_opponent = NoughtsAndCrossesMinimaxAI()
             self.current_player = "Player"
         else:
             self.current_player = "Player 1"
@@ -231,19 +232,110 @@ class NoughtsAndCrossesScreen:
                     self.current_player = "Player 2"
                 else:
                     self.current_player = "Player 1"
+
         
 """ A Minimax AI for the game Noughts and Crosses"""
 class NoughtsAndCrossesMinimaxAI:
     def __init__(self):
-        """ Initialises the game"""
         pass
 
+    def evaluate_state_score(self, to_evaluate):
+        """ Observes a game state to determine a score for the AI.
+
+        A higher score is better for the AI.
+        Points are awarded for states that make it more likely for the
+        AI to win or tie, whereas points are deducted for states that
+        make it more likely for the player to win.
+
+        Parameters
+        ------------
+            to_evaluate: A 3x3 2D array of strings
+                The game state to be evaluated
+
+        Return
+        ------------
+            score: float
+                The evaluated score for the game state.
+        """
+        return 0
+
+    def identify_possible_actions(self, player, grid_state):
+        """ Observes a game state and player turn to determine
+            possible actions for that player.
+
+        The "possible actions" includes actions that would cause the
+        player to lose or win the game.
+
+        Parameters
+        ------------
+            player: string
+                The player who will be taking the next turn / action.
+            grid_state: A 3x3 2D array of strings
+                The game state to be evaluated.
+
+        Return
+        ------------
+            possible_states: A list of 3x3 2D arrays of strings
+                A list of possible game states from the inputted one. 
+        """
+        if player == "Player":
+            symbol = "nought"
+        else:
+            symbol = "cross"
+        possible_actions = []
+        for row in range(3):
+            for col in range(3):
+                to_add = copy.deepcopy(grid_state)
+                if grid_state[row][col] is None:
+                    to_add[row][col] = symbol
+                    possible_actions.append(to_add)
+        return possible_actions
+
+    def determine_best_action(self, current_game_state):
+        """ Identifies the best action for the AI to take next.
+
+        Uses a minimax algorithm to determine what the best action the
+        AI should take. A few special cases are hard-coded, such as when
+        there is only one possible action available or when the board is
+        empty.
+
+        Parameters
+        ------------
+            current_game_state:
+                The game state to evaluate and decide the best action from
+        Return
+        ------------
+            best_action: A 3x3 2D array of strings
+                The grid state following the best action taken.
+        """
+        possible_actions = self.identify_possible_actions("AI",
+                                                          current_game_state)
+        if len(possible_actions) < 1:
+            print("grid state error")
+        elif len(possible_actions) == 1:
+            return possible_actions[0]
+        else:
+            current_best = {}
+            best_overall_action = []
+            for action in possible_actions:
+                opponent_reactions = self.identify_possible_actions("Player",
+                                                                    action)
+                scores = {}
+                for reaction in opponent_reactions:
+                    scores[self.evaluate_state_score(reaction)] = reaction
+                action_best = max(list(scores))
+                if current_best == {} or list(scores)[0] < action_best:
+                    current_best = {action_best: scores[action_best]}
+                    best_overall_action = action
+            return best_overall_action
+                
+            
 def main():
-    NoughtsAndCrossesScreen()
+    AI = NoughtsAndCrossesMinimaxAI()
 
 if __name__ == "__main__":
     main()
-        
+
         
 
                                                                             
