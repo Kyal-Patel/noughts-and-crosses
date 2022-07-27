@@ -1,13 +1,16 @@
 from tkinter import *
 import copy
 
-""" The GUI for the game, along with any interactions with it."""
+""" The GUI for the game, along with any interactions with it.
+
+Note: Currently player 1 is always nought, and player 2 / CPU is always cross.
+"""
 class NoughtsAndCrossesScreen:
     def __init__(self):
         """ Creates the screen and the initial grid & player states.
 
-        There are two game modes available: PvP or PvCPU. To switch between the two, change the
-        "self.CPU_opponent_enabled" flag.
+        There are two game modes available: PvP or PvCPU. To switch
+        between the two, change the "self.CPU_opponent_enabled" flag.
         """
         self.width = 600
         self.height = 600
@@ -17,7 +20,7 @@ class NoughtsAndCrossesScreen:
                            [None, None, None],
                            [None, None, None],]
         
-        self.CPU_opponent_enabled = False
+        self.CPU_opponent_enabled = True
         if self.CPU_opponent_enabled:
             self.CPU_opponent = NoughtsAndCrossesMinimaxAI()
             self.current_player = "Player"
@@ -189,6 +192,11 @@ class NoughtsAndCrossesScreen:
                            [None, None, None],
                            [None, None, None],]
         self.grid.destroy()
+        if self.CPU_opponent_enabled:
+            self.CPU_opponent = NoughtsAndCrossesMinimaxAI()
+            self.current_player = "Player"
+        else:
+            self.current_player = "Player 1"
         self.create_grid()
 
     def perform_action(self, event):
@@ -211,7 +219,7 @@ class NoughtsAndCrossesScreen:
         col = event.x // self.cell_width
         row = event.y // self.cell_height
         if self.grid_state[row][col] is None:
-            if self.current_player == "Player 1":
+            if self.current_player == "Player 1" or self.current_player == "Player":
                 self.add_nought((row, col))
             else:
                 self.add_cross((row, col))
@@ -226,6 +234,7 @@ class NoughtsAndCrossesScreen:
                 if self.CPU_opponent_enabled == True:
                     if self.current_player == "Player":
                         self.current_player = "CPU"
+                        self.take_CPU_action()
                     else:
                         self.current_player = "Player"
                 elif self.current_player == "Player 1":
@@ -233,13 +242,101 @@ class NoughtsAndCrossesScreen:
                 else:
                     self.current_player = "Player 1"
 
+    def take_CPU_action(self):
+        """ Lets the AI take it's turn."""
+        action = self.CPU_opponent.determine_best_action(self.grid_state)
+        position_found = False
+        for row in range(3):
+            for col in range(3):
+                if self.grid_state[row][col] != action[row][col]:
+                    position = (row, col)
+                    self.add_cross(position)
+                    position_found = True
+                    self.grid_state = action
+                    
+                    winner = self.check_win_or_tie()
+                    if winner is not None:
+                        if winner == "Tie":
+                            self.display_tied_game_message()
+                        else:
+                            self.display_win_message(winner)
+                    else:
+                        self.current_player = "Player"
+                    
+        if not position_found:
+            print("No CPU action error.")
+        
+
         
 """ A Minimax AI for the game Noughts and Crosses"""
 class NoughtsAndCrossesMinimaxAI:
     def __init__(self):
-        pass
+        self.winner_scores = {
+            "CPU" : 1,
+            "Tie" : 0.5,
+            "None" : 0,
+            "Player" : -1
+            }
+        
+    def check_win_or_tie(self, current_player, grid_state):
+        """ A version of check-win_or_tie that inputs the current player
+            and board state.
 
-    def evaluate_state_score(self, to_evaluate):
+        First identify which player is playing - we use this to
+        identify which symbol to check. Then check the grid state
+        for a 3-in-a-row of the player's symbol. If there is then
+        a player has won, if not then play resumes unless the grid
+        is full (in which case it is a tie).
+        Note that this function is run after a player makes an action,
+        before the player turn is switched.
+
+        Parameters
+        ------------
+            current_player: string
+                The player who just did an action
+            grid_state: A 3x3 2D array of strings
+                The board state to evaluate.
+        Return
+        ------------
+            winner: string
+                Which player won, if any.
+        """
+        
+        if current_player == "Player 1" or current_player == "Player":
+            symbol = "nought"
+        else:
+            symbol = "cross"
+
+        for row_num in range(3):
+            if grid_state[row_num] == [symbol, symbol, symbol]:
+                return current_player
+        for col_num in range(3):
+            if (grid_state[0][col_num] == symbol
+                and grid_state[1][col_num] == symbol
+                and grid_state[2][col_num] == symbol):
+                # If all are True then a vertical 3-in-a-row was found
+                return current_player
+        if grid_state[1][1] == symbol:
+            if ((grid_state[0][0] == symbol
+                 and grid_state[2][2] == symbol) or
+                (grid_state[0][2] == symbol
+                 and grid_state[2][0] == symbol)):
+                # Checks for either diagonal match
+                return current_player   
+
+        full_board = True
+        for row in range(3):
+            for col in range(3):
+                if grid_state[row][col] is None:
+                    full_board = False
+        if full_board:
+            return "Tie"
+
+        # If no return has been made by this point, it is assumed that
+        # no one has won nor is it a tie.
+        return None
+
+    def evaluate_state_score(self, to_evaluate, player_turn):
         """ Observes a game state to determine a score for the AI.
 
         A higher score is better for the AI.
@@ -251,13 +348,39 @@ class NoughtsAndCrossesMinimaxAI:
         ------------
             to_evaluate: A 3x3 2D array of strings
                 The game state to be evaluated
+            player_turn: string
+                The player who just took their turn. Used to decide
+                whether to maximise or mimimse the score.
 
         Return
         ------------
             score: float
                 The evaluated score for the game state.
         """
-        return 0
+        winner = self.check_win_or_tie(player_turn, to_evaluate)
+        if winner is not None:
+            return self.winner_scores[winner]
+        best_score = -2
+        worst_score = 2
+        if player_turn == "CPU":
+            next_player = "Player"
+        else:
+            next_player = "CPU"
+        next_player_actions = self.identify_possible_actions(next_player,
+                                                             to_evaluate)
+        for action in next_player_actions:
+            score = self.evaluate_state_score(action, next_player)
+            if next_player == "CPU":
+                best_score = max(score, best_score)
+            elif next_player == "Player":
+                worst_score = min(score, worst_score)
+            if best_score == 1:
+                return best_score
+            elif worst_score == -1:
+                return worst_score
+        if next_player == "CPU":
+            return best_score
+        return worst_score
 
     def identify_possible_actions(self, player, grid_state):
         """ Observes a game state and player turn to determine
@@ -291,13 +414,11 @@ class NoughtsAndCrossesMinimaxAI:
                     possible_actions.append(to_add)
         return possible_actions
 
-    def determine_best_action(self, current_game_state):
+    def determine_best_action(self, grid_state):  
         """ Identifies the best action for the AI to take next.
 
         Uses a minimax algorithm to determine what the best action the
-        AI should take. A few special cases are hard-coded, such as when
-        there is only one possible action available or when the board is
-        empty.
+        AI should take.
 
         Parameters
         ------------
@@ -308,30 +429,29 @@ class NoughtsAndCrossesMinimaxAI:
             best_action: A 3x3 2D array of strings
                 The grid state following the best action taken.
         """
-        possible_actions = self.identify_possible_actions("AI",
-                                                          current_game_state)
+        possible_actions = self.identify_possible_actions("CPU",
+                                                          grid_state)
         if len(possible_actions) < 1:
             print("grid state error")
         elif len(possible_actions) == 1:
             return possible_actions[0]
         else:
-            current_best = {}
-            best_overall_action = []
+            best_action = []
+            best_score = -2
             for action in possible_actions:
-                opponent_reactions = self.identify_possible_actions("Player",
-                                                                    action)
-                scores = {}
-                for reaction in opponent_reactions:
-                    scores[self.evaluate_state_score(reaction)] = reaction
-                action_best = max(list(scores))
-                if current_best == {} or list(scores)[0] < action_best:
-                    current_best = {action_best: scores[action_best]}
-                    best_overall_action = action
-            return best_overall_action
+                score = self.evaluate_state_score(action, "CPU")
+                if score == 1:
+                    return action
+                elif score > best_score:
+                    best_action = action
+                    best_score = score
+            return best_action
                 
+                
+
             
 def main():
-    AI = NoughtsAndCrossesMinimaxAI()
+    NoughtsAndCrossesScreen()
 
 if __name__ == "__main__":
     main()
